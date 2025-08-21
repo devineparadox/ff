@@ -1,18 +1,12 @@
 import redis
 from bot.config import settings, parse_redis_url
 
-# Global redis client (singleton)
-def create_redis_client():
+def get_redis():
     if settings.REDIS_URL:
-        parts = parse_redis_url(settings.REDIS_URL) or {}
-        return redis.Redis(
-            host=parts.get("host", settings.REDIS_HOST),
-            port=parts.get("port", settings.REDIS_PORT),
-            db=parts.get("db", settings.REDIS_DB),
-            password=(parts.get("password") or settings.REDIS_PASSWORD) or None,
-            decode_responses=True,
-        )
+        # Use REDIS_URL from Heroku
+        return redis.from_url(settings.REDIS_URL, decode_responses=True)
     else:
+        # Fallback to manual settings
         return redis.Redis(
             host=settings.REDIS_HOST,
             port=settings.REDIS_PORT,
@@ -21,19 +15,13 @@ def create_redis_client():
             decode_responses=True,
         )
 
-# initialize once
-redis_client = create_redis_client()
-
-# ---------------------------
-# Utility functions
-# ---------------------------
 def incr_like(key: str) -> int:
-    """Increment like counter for a key."""
-    return redis_client.incr(key)
+    r = get_redis()
+    return r.incr(key)
 
 def get_count(key: str) -> int:
-    """Get integer value for a key."""
-    val = redis_client.get(key)
+    r = get_redis()
+    val = r.get(key)
     try:
         return int(val) if val is not None else 0
     except (TypeError, ValueError):
