@@ -1,18 +1,18 @@
 import redis
-from bot.config import settings, parse_redis_url
+from bot.config import settings
 
 def get_redis():
     if settings.REDIS_URL:
-        # Use REDIS_URL from Heroku
-        return redis.from_url(settings.REDIS_URL, decode_responses=True)
+        # Heroku Redis requires SSL
+        return redis.from_url(settings.REDIS_URL, decode_responses=True, ssl=True)
     else:
-        # Fallback to manual settings
         return redis.Redis(
             host=settings.REDIS_HOST,
             port=settings.REDIS_PORT,
             db=settings.REDIS_DB,
             password=settings.REDIS_PASSWORD or None,
             decode_responses=True,
+            ssl=False,  # local dev usually doesn't need SSL
         )
 
 def incr_like(key: str) -> int:
