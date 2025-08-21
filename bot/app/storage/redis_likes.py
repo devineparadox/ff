@@ -3,8 +3,12 @@ from bot.config import settings
 
 def get_redis():
     if settings.REDIS_URL:
-        # Heroku Redis requires SSL
-        return redis.from_url(settings.REDIS_URL, decode_responses=True, ssl=True)
+        # Heroku Redis requires SSL (but redis-py uses ssl_cert_reqs)
+        return redis.from_url(
+            settings.REDIS_URL,
+            decode_responses=True,
+            ssl_cert_reqs=None  # accept self-signed certs
+        )
     else:
         return redis.Redis(
             host=settings.REDIS_HOST,
@@ -12,7 +16,6 @@ def get_redis():
             db=settings.REDIS_DB,
             password=settings.REDIS_PASSWORD or None,
             decode_responses=True,
-            ssl=False,  # local dev usually doesn't need SSL
         )
 
 def incr_like(key: str) -> int:
