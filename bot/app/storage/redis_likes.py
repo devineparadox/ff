@@ -1,34 +1,39 @@
 import redis
 from bot.config import settings, parse_redis_url
 
-def get_redis():
-    url = settings.REDIS_URL
-    if url:
-        parts = parse_redis_url(url) or {}
-        pool = redis.ConnectionPool(
-            host=parts.get('host', settings.REDIS_HOST),
-            port=parts.get('port', settings.REDIS_PORT),
-            db=parts.get('db', settings.REDIS_DB),
-            password=(parts.get('password') or settings.REDIS_PASSWORD) or None,
+# Global redis client (singleton)
+def create_redis_client():
+    if settings.REDIS_URL:
+        parts = parse_redis_url(settings.REDIS_URL) or {}
+        return redis.Redis(
+            host=parts.get("host", settings.REDIS_HOST),
+            port=parts.get("port", settings.REDIS_PORT),
+            db=parts.get("db", settings.REDIS_DB),
+            password=(parts.get("password") or settings.REDIS_PASSWORD) or None,
             decode_responses=True,
         )
     else:
-        pool = redis.ConnectionPool(
+        return redis.Redis(
             host=settings.REDIS_HOST,
             port=settings.REDIS_PORT,
             db=settings.REDIS_DB,
             password=settings.REDIS_PASSWORD or None,
             decode_responses=True,
         )
-    return redis.Redis(connection_pool=pool)
 
+# initialize once
+redis_client = create_redis_client()
+
+# ---------------------------
+# Utility functions
+# ---------------------------
 def incr_like(key: str) -> int:
-    r = get_redis()
-    return r.incr(key)
+    """Increment like counter for a key."""
+    return redis_client.incr(key)
 
 def get_count(key: str) -> int:
-    r = get_redis()
-    val = r.get(key)
+    """Get integer value for a key."""
+    val = redis_client.get(key)
     try:
         return int(val) if val is not None else 0
     except (TypeError, ValueError):
